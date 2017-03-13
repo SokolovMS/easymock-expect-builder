@@ -3,6 +3,12 @@ package com.keshasosiska;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class Calculator {
+    public String name;
+
+    public Calculator(final String name) {
+        this.name = name;
+    }
+
     public int addInts(final int a, final int b) {
         return a + b;
     }
