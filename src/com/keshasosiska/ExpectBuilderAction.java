@@ -1,7 +1,9 @@
 package com.keshasosiska;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
+import com.intellij.ide.fileTemplates.FileTemplate;
+import com.intellij.ide.fileTemplates.FileTemplateManager;
+import com.intellij.ide.fileTemplates.JavaTemplateUtil;
+import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.LangDataKeys;
@@ -10,22 +12,22 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.ClassFileViewProvider;
 import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiFileFactory;
 import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
-import com.intellij.psi.impl.source.PsiJavaFileImpl;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.util.IncorrectOperationException;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Properties;
 
 public class ExpectBuilderAction extends AnAction {
-    private static final String separator = "/";
-
     @Override
     public void actionPerformed(AnActionEvent e) {
         PsiClass psiClass = getPsiClassFromContext(e);
@@ -37,41 +39,42 @@ public class ExpectBuilderAction extends AnAction {
         }
     }
 
-    public void generate(final PsiJavaFile javaClass, final List<PsiMethod> methods) {
-        PsiJavaFile builderClass = createBuilderClass(javaClass);
-
-        new WriteCommandAction.Simple(builderClass.getProject(), builderClass.getContainingFile()) {
+    public void generate(final PsiJavaFile psiSrcFile, final List<PsiMethod> methods) {
+        new WriteCommandAction.Simple(psiSrcFile.getProject()) {
             @Override
             protected void run() throws Throwable {
-//                generateTestClass(builderClass, methods);
+                createBuilderClass(psiSrcFile, methods);
             }
         }.execute();
     }
 
-    private PsiJavaFile createBuilderClass(final PsiJavaFile sourceClass) {
+    private void createBuilderClass(final PsiJavaFile psiSrcFile, final List<PsiMethod> methods) {
         try {
-            return createTestBuilderClass(sourceClass);
+            PsiJavaFile psiTestFile = createEmptyBuilder(psiSrcFile);
+            fillBuilderWithContent(psiSrcFile, psiTestFile, methods);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void fillBuilderWithContent(final PsiJavaFile psiSrcFile,
+                                        final PsiJavaFile psiTestFile,
+                                        final List<PsiMethod> methods) {
+    }
+
+    private PsiJavaFile createEmptyBuilder(final PsiJavaFile sourceClass) {
+        try {
+            return (PsiJavaFile)createFromTemplate(sourceClass);
         } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    private PsiJavaFile createTestBuilderClass(final PsiJavaFile sourceClass) throws IOException {
-//        String fileName = sourceClass.getName().replace(".java", "MockBuilder.java");
-//
-//        PsiJavaFile psiJavaFile = (PsiJavaFile) PsiFileFactory.getInstance(sourceClass.getProject())
-//                .createFileFromText(fileName, JavaFileType.INSTANCE, "");
-//
-//        psiJavaFile.setPackageName(sourceClass.getPackageName());
-//
-//        PsiDirectory directory = sourceClass.getContainingDirectory()
-//        PsiElement addedElement = directory.add(psiJavaFile);
-//        return psiJavaFile;
-
-        PsiManager psiManager = sourceClass.getManager();
+    private VirtualFile getEmptyVirtualFile(final PsiJavaFile sourceClass) throws IOException {
         Project project = sourceClass.getProject();
         String packageName = sourceClass.getPackageName();
+
         VirtualFile virtualTestFile = project.getBaseDir()
                 .findOrCreateChildData(project, "src")
                 .findOrCreateChildData(project, "test")
@@ -82,15 +85,7 @@ public class ExpectBuilderAction extends AnAction {
         }
 
         String fileName = sourceClass.getName().replace(".java", "MockBuilder.java");
-        virtualTestFile = virtualTestFile.findOrCreateChildData(project, fileName);
-
-        PsiJavaFile testFile = new PsiJavaFileImpl(new ClassFileViewProvider(psiManager, virtualTestFile));
-        testFile.setPackageName(packageName);
-
-        return testFile;
-    }
-
-    private void generateTestClass(final PsiClass builderClass, final List<PsiMethod> methods) {
+        return virtualTestFile.findOrCreateChildData(project, fileName);
     }
 
     private PsiClass getPsiClassFromContext(AnActionEvent e) {
@@ -104,34 +99,46 @@ public class ExpectBuilderAction extends AnAction {
         return PsiTreeUtil.getParentOfType(elementAt, PsiClass.class);
     }
 
-    private VirtualFile getTestFile(final VirtualFile sourceFile) {
-        VirtualFile testFile;
+    public PsiFile createFromTemplate(final PsiJavaFile sourceClass)
+            throws IncorrectOperationException, IOException {
+        Project project = sourceClass.getProject();
 
-        String sourcePath = sourceFile.getPath();
-        String testPath = makeTestPath(sourcePath);
+        // TODO: getEmptyVirtualFile creates virtual file. Possible to find PsiDirectory only from sourceClass
+        VirtualFile testVirtualFile = getEmptyVirtualFile(sourceClass);
+        PsiFile testFile = PsiManager.getInstance(sourceClass.getProject()).findFile(testVirtualFile);
 
-        return sourceFile;
-    }
+        PsiDirectory directory = testFile.getContainingDirectory();
 
-    private String makeTestPath(final String sourcePath) {
-        String regex = separator + "main" + separator;
-        String[] parts = sourcePath.split(regex);
-        if (parts.length == 1) {
-            return makeTestFilename(sourcePath);
+        FileTemplateManager templateManager = FileTemplateManager.getDefaultInstance();
+
+        Properties properties = new Properties(templateManager.getDefaultProperties());
+        JavaTemplateUtil.setPackageNameAttribute(properties, directory);
+
+        String name = testVirtualFile.getName().split(".java")[0];
+        properties.setProperty("NAME", name);
+        properties.setProperty("lowCaseName", name.substring(0, 1)
+                .toLowerCase() + name.substring(1));
+
+        String text;
+        try {
+            FileTemplate template = templateManager.getInternalTemplate("Class");
+            text = template.getText(properties);
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to load template for "
+                    + templateManager.internalTemplateToSubject("Class"),
+                    e);
         }
 
-        String testPath = parts[0];
-        for (int i = 1; i < parts.length - 1; i++) {
-            testPath += regex + parts[i];
+        PsiFileFactory factory = PsiFileFactory.getInstance(project);
+        String fileName = testVirtualFile.getName();
+        PsiFile file = factory.createFileFromText(fileName, JavaFileType.INSTANCE, text);
+
+        try {
+            directory.checkCreateFile(file.getName());
+        } catch (IncorrectOperationException e) {
+            testFile.delete();
         }
-        testPath += separator + "test" + separator + parts[parts.length - 1];
 
-        return makeTestFilename(testPath);
-    }
-
-    private String makeTestFilename(final String testPath) {
-        checkArgument(testPath.endsWith(".java"), "Can work only with java files");
-
-        return testPath.replace(".java", "TestBuilder.java");
+        return (PsiFile) directory.add(file);
     }
 }
