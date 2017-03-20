@@ -60,6 +60,18 @@ public class ExpectBuilderAction extends AnAction {
     private void fillBuilderWithContent(final PsiJavaFile psiSrcFile,
                                         final PsiJavaFile psiTestFile,
                                         final List<PsiMethod> methods) {
+        PsiClass testClass = psiTestFile.getClasses()[0];
+
+        // TODO: Add class field declaration
+
+        // TODO: Add constructor
+
+        for (PsiMethod method : methods) {
+            // TODO: change method contents.
+            testClass.add(method);
+        }
+
+        // TODO: Add buildAndReplay method.
     }
 
     private PsiJavaFile createEmptyBuilder(final PsiJavaFile sourceClass) {
