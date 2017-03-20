@@ -1,62 +1,156 @@
 package com.keshasosiska;
 
-import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.editor.CaretModel;
-import com.intellij.openapi.editor.Document;
+import com.intellij.ide.fileTemplates.FileTemplate;
+import com.intellij.ide.fileTemplates.FileTemplateManager;
+import com.intellij.ide.fileTemplates.JavaTemplateUtil;
+import com.intellij.ide.highlighter.JavaFileType;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.LangDataKeys;
+import com.intellij.openapi.actionSystem.PlatformDataKeys;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.editor.ScrollType;
-import com.intellij.openapi.editor.SelectionModel;
-import com.intellij.openapi.editor.actionSystem.EditorAction;
-import com.intellij.openapi.editor.actionSystem.EditorActionHandler;
-import com.intellij.openapi.editor.actionSystem.EditorWriteActionHandler;
-import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiDirectory;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiFileFactory;
+import com.intellij.psi.PsiJavaFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiMethod;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.util.IncorrectOperationException;
 
-public class ExpectBuilderAction extends EditorAction {
+import java.io.IOException;
+import java.util.List;
+import java.util.Properties;
 
-    public ExpectBuilderAction(EditorActionHandler defaultHandler) {
-        super(defaultHandler);
-    }
-
-    public ExpectBuilderAction() {
-        this(new UpHandler());
-    }
-
-    private static class UpHandler extends EditorWriteActionHandler {
-        private UpHandler() {
+public class ExpectBuilderAction extends AnAction {
+    @Override
+    public void actionPerformed(AnActionEvent e) {
+        PsiClass psiClass = getPsiClassFromContext(e);
+        GenerateDialog dlg = new GenerateDialog(psiClass, "Select methods for MockBuilder");
+        dlg.show();
+        if (dlg.isOK()) {
+            PsiJavaFile javaFile = (PsiJavaFile) psiClass.getContext();
+            generate(javaFile, dlg.getFields());
         }
+    }
 
-        @Override
-        public void executeWriteAction(Editor editor, DataContext dataContext) {
-            Document document = editor.getDocument();
-
-            if (editor == null || document == null || !document.isWritable()) {
-                return;
+    public void generate(final PsiJavaFile psiSrcFile, final List<PsiMethod> methods) {
+        new WriteCommandAction.Simple(psiSrcFile.getProject()) {
+            @Override
+            protected void run() throws Throwable {
+                createBuilderClass(psiSrcFile, methods);
             }
+        }.execute();
+    }
 
-            // CaretModel used to find caret position
-            CaretModel caretModel = editor.getCaretModel();
-            // SelectionModel used to find selection ranges
-            SelectionModel selectionModel = editor.getSelectionModel();
-
-            // get the range of the selected characters
-            TextRange charsRange = new TextRange(selectionModel.getSelectionStart(), selectionModel.getSelectionEnd());
-            // get the range of the selected lines (block of code)
-            TextRange linesRange = new TextRange(document.getLineNumber(charsRange.getStartOffset()), document.getLineNumber(charsRange.getEndOffset()));
-            // range of the duplicated string
-            TextRange linesBlock = new TextRange(document.getLineStartOffset(linesRange.getStartOffset()), document.getLineEndOffset(linesRange.getEndOffset()));
-
-            // get the string to duplicate
-            String duplicatedString = document.getText().substring(linesBlock.getStartOffset(), linesBlock.getEndOffset());
-            duplicatedString += "\n";
-
-            // insert new duplicated string into the document
-            document.insertString(linesBlock.getStartOffset(), duplicatedString);
-
-            // select duplicated block
-            editor.getSelectionModel().setSelection(linesBlock.getStartOffset(), linesBlock.getStartOffset());
-            // move cursor to the start of copied block
-            caretModel.moveToOffset(linesBlock.getStartOffset());
-            editor.getScrollingModel().scrollToCaret(ScrollType.RELATIVE);
+    private void createBuilderClass(final PsiJavaFile psiSrcFile, final List<PsiMethod> methods) {
+        try {
+            PsiJavaFile psiTestFile = createEmptyBuilder(psiSrcFile);
+            fillBuilderWithContent(psiSrcFile, psiTestFile, methods);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private void fillBuilderWithContent(final PsiJavaFile psiSrcFile,
+                                        final PsiJavaFile psiTestFile,
+                                        final List<PsiMethod> methods) {
+        PsiClass testClass = psiTestFile.getClasses()[0];
+
+        // TODO: Add class field declaration
+
+        // TODO: Add constructor
+
+        for (PsiMethod method : methods) {
+            // TODO: change method contents.
+            testClass.add(method);
+        }
+
+        // TODO: Add buildAndReplay method.
+    }
+
+    private PsiJavaFile createEmptyBuilder(final PsiJavaFile sourceClass) {
+        try {
+            return (PsiJavaFile)createFromTemplate(sourceClass);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private VirtualFile getEmptyVirtualFile(final PsiJavaFile sourceClass) throws IOException {
+        Project project = sourceClass.getProject();
+        String packageName = sourceClass.getPackageName();
+
+        VirtualFile virtualTestFile = project.getBaseDir()
+                .findOrCreateChildData(project, "src")
+                .findOrCreateChildData(project, "test")
+                .findOrCreateChildData(project, "java");
+
+        for (String packagePart : packageName.split("\\.")) {
+            virtualTestFile = virtualTestFile.findOrCreateChildData(project, packagePart);
+        }
+
+        String fileName = sourceClass.getName().replace(".java", "MockBuilder.java");
+        return virtualTestFile.findOrCreateChildData(project, fileName);
+    }
+
+    private PsiClass getPsiClassFromContext(AnActionEvent e) {
+        PsiFile psiFile = e.getData(LangDataKeys.PSI_FILE);
+        Editor editor = e.getData(PlatformDataKeys.EDITOR);
+        if (psiFile == null || editor == null) {
+            return null;
+        }
+        int offset = editor.getCaretModel().getOffset();
+        PsiElement elementAt = psiFile.findElementAt(offset);
+        return PsiTreeUtil.getParentOfType(elementAt, PsiClass.class);
+    }
+
+    public PsiFile createFromTemplate(final PsiJavaFile sourceClass)
+            throws IncorrectOperationException, IOException {
+        Project project = sourceClass.getProject();
+
+        // TODO: getEmptyVirtualFile creates virtual file. Possible to find PsiDirectory only from sourceClass
+        VirtualFile testVirtualFile = getEmptyVirtualFile(sourceClass);
+        PsiFile testFile = PsiManager.getInstance(sourceClass.getProject()).findFile(testVirtualFile);
+
+        PsiDirectory directory = testFile.getContainingDirectory();
+
+        FileTemplateManager templateManager = FileTemplateManager.getDefaultInstance();
+
+        Properties properties = new Properties(templateManager.getDefaultProperties());
+        JavaTemplateUtil.setPackageNameAttribute(properties, directory);
+
+        String name = testVirtualFile.getName().split(".java")[0];
+        properties.setProperty("NAME", name);
+        properties.setProperty("lowCaseName", name.substring(0, 1)
+                .toLowerCase() + name.substring(1));
+
+        String text;
+        try {
+            FileTemplate template = templateManager.getInternalTemplate("Class");
+            text = template.getText(properties);
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to load template for "
+                    + templateManager.internalTemplateToSubject("Class"),
+                    e);
+        }
+
+        PsiFileFactory factory = PsiFileFactory.getInstance(project);
+        String fileName = testVirtualFile.getName();
+        PsiFile file = factory.createFileFromText(fileName, JavaFileType.INSTANCE, text);
+
+        try {
+            directory.checkCreateFile(file.getName());
+        } catch (IncorrectOperationException e) {
+            testFile.delete();
+        }
+
+        return (PsiFile) directory.add(file);
     }
 }
