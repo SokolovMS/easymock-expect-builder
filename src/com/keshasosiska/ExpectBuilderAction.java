@@ -66,7 +66,7 @@ public class ExpectBuilderAction extends AnAction {
     private void fillBuilderWithContent(final PsiJavaFile psiSrcFile,
                                         final PsiJavaFile psiTestFile,
                                         final List<PsiMethod> methods) {
-        PsiClass srcClass = psiTestFile.getClasses()[0];
+        PsiClass srcClass = psiSrcFile.getClasses()[0];
         PsiClass testClass = psiTestFile.getClasses()[0];
 
         Project project = psiSrcFile.getProject();
@@ -78,8 +78,8 @@ public class ExpectBuilderAction extends AnAction {
         psiTestFile.getImportList().add(factory.createImportStatement(importClass));
 
         // field
-        PsiElement field = factory.createField("mock",
-                PsiType.getTypeByName(srcClass.getName(), project, scope));
+        PsiType srcClassType = PsiType.getTypeByName(srcClass.getName(), project, scope);
+        PsiElement field = factory.createField("mock", srcClassType);
         testClass.add(field);
 
         // Constructor
@@ -92,10 +92,15 @@ public class ExpectBuilderAction extends AnAction {
 
         for (PsiMethod method : methods) {
             // TODO: change method contents.
-            testClass.add(method);
+//            testClass.add(method);
         }
 
         // TODO: Add buildAndReplay method.
+        PsiMethod buildAndReplay = factory.createMethod("buildAndReplay", srcClassType);
+        PsiCodeBlock buildAndReplayBody = buildAndReplay.getBody();
+        buildAndReplayBody.add(factory.createStatementFromText("EasyMock.replay(mock);", null));
+        buildAndReplayBody.add(factory.createStatementFromText("return mock;", null));
+        testClass.add(buildAndReplay);
     }
 
     private PsiJavaFile createEmptyBuilder(final PsiJavaFile sourceClass) {
