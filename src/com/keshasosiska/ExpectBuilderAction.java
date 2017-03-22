@@ -12,7 +12,9 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiCodeBlock;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementFactory;
@@ -21,7 +23,9 @@ import com.intellij.psi.PsiFileFactory;
 import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
+import com.intellij.psi.PsiStatement;
 import com.intellij.psi.PsiType;
+import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.IncorrectOperationException;
 
@@ -67,12 +71,24 @@ public class ExpectBuilderAction extends AnAction {
 
         Project project = psiSrcFile.getProject();
         PsiElementFactory factory = PsiElementFactory.SERVICE.getInstance(project);
+        GlobalSearchScope scope = psiSrcFile.getResolveScope();
 
+        // import
+        PsiClass importClass = JavaPsiFacade.getInstance(project).findClass("org.easymock.EasyMock", scope);
+        psiTestFile.getImportList().add(factory.createImportStatement(importClass));
+
+        // field
         PsiElement field = factory.createField("mock",
-                PsiType.getTypeByName(srcClass.getName(), project, psiSrcFile.getResolveScope()));
+                PsiType.getTypeByName(srcClass.getName(), project, scope));
         testClass.add(field);
 
-        // TODO: Add constructor
+        // Constructor
+        PsiMethod constructor = factory.createConstructor();
+        PsiCodeBlock constructorBody = constructor.getBody();
+        String assignText = String.format("mock = EasyMock.mock(%s.class);", srcClass.getName());
+        PsiStatement assignStatement = factory.createStatementFromText(assignText, null);
+        constructorBody.add(assignStatement);
+        testClass.add(constructor);
 
         for (PsiMethod method : methods) {
             // TODO: change method contents.
