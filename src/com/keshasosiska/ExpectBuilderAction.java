@@ -15,11 +15,13 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementFactory;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiFileFactory;
 import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
+import com.intellij.psi.PsiType;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.IncorrectOperationException;
 
@@ -60,9 +62,15 @@ public class ExpectBuilderAction extends AnAction {
     private void fillBuilderWithContent(final PsiJavaFile psiSrcFile,
                                         final PsiJavaFile psiTestFile,
                                         final List<PsiMethod> methods) {
+        PsiClass srcClass = psiTestFile.getClasses()[0];
         PsiClass testClass = psiTestFile.getClasses()[0];
 
-        // TODO: Add class field declaration
+        Project project = psiSrcFile.getProject();
+        PsiElementFactory factory = PsiElementFactory.SERVICE.getInstance(project);
+
+        PsiElement field = factory.createField("mock",
+                PsiType.getTypeByName(srcClass.getName(), project, psiSrcFile.getResolveScope()));
+        testClass.add(field);
 
         // TODO: Add constructor
 
@@ -128,8 +136,7 @@ public class ExpectBuilderAction extends AnAction {
 
         String name = testVirtualFile.getName().split(".java")[0];
         properties.setProperty("NAME", name);
-        properties.setProperty("lowCaseName", name.substring(0, 1)
-                .toLowerCase() + name.substring(1));
+        properties.setProperty("lowCaseName", name.substring(0, 1).toLowerCase() + name.substring(1));
 
         String text;
         try {
