@@ -23,6 +23,8 @@ import com.intellij.psi.PsiFileFactory;
 import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
+import com.intellij.psi.PsiParameter;
+import com.intellij.psi.PsiParameterList;
 import com.intellij.psi.PsiStatement;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -30,8 +32,11 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.IncorrectOperationException;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 public class ExpectBuilderAction extends AnAction {
     @Override
@@ -82,7 +87,7 @@ public class ExpectBuilderAction extends AnAction {
         PsiElement field = factory.createField("mock", srcClassType);
         testClass.add(field);
 
-        // Constructor
+        // constructor
         PsiMethod constructor = factory.createConstructor();
         PsiCodeBlock constructorBody = constructor.getBody();
         String assignText = String.format("mock = EasyMock.mock(%s.class);", srcClass.getName());
@@ -91,16 +96,55 @@ public class ExpectBuilderAction extends AnAction {
         testClass.add(constructor);
 
         for (PsiMethod method : methods) {
-            // TODO: change method contents.
-//            testClass.add(method);
+            // methods
+            addMethod(factory, testClass, method);
         }
 
-        // TODO: Add buildAndReplay method.
+        // buildAndReplay() method.
         PsiMethod buildAndReplay = factory.createMethod("buildAndReplay", srcClassType);
         PsiCodeBlock buildAndReplayBody = buildAndReplay.getBody();
         buildAndReplayBody.add(factory.createStatementFromText("EasyMock.replay(mock);", null));
         buildAndReplayBody.add(factory.createStatementFromText("return mock;", null));
         testClass.add(buildAndReplay);
+    }
+
+    private void addMethod(final PsiElementFactory factory, final PsiClass testClass, final PsiMethod method) {
+        if (method.isConstructor()) {
+            return;
+        }
+
+        PsiMethod builderMethod = factory.createMethod(method.getName(), factory.createType(testClass));
+
+        PsiParameterList parameters = builderMethod.getParameterList();
+        for (PsiParameter parameter : method.getParameterList().getParameters()) {
+            parameters.add(parameter);
+        }
+
+        PsiCodeBlock methodBody = builderMethod.getBody();
+
+        if (Objects.equals(method.getReturnType(), PsiType.VOID)) {
+            String expectText = String.format("mock.%s(%s);", method.getName(), getParametersString(method));
+            methodBody.add(factory.createStatementFromText(expectText, null));
+            methodBody.add(factory.createStatementFromText("EasyMock.expectLastCall().once();", null));
+        } else {
+            parameters.add(factory.createParameter("expected", method.getReturnType()));
+
+            String expectText = String.format("EasyMock.expect(mock.%s(%s)).andReturn(expected).once();",
+                    method.getName(), getParametersString(method));
+            methodBody.add(factory.createStatementFromText(expectText, null));
+        }
+
+        methodBody.add(factory.createStatementFromText("return this;", null));
+
+        testClass.add(builderMethod);
+    }
+
+    private String getParametersString(final PsiMethod method) {
+        PsiParameter[] psiParameters = method.getParameterList().getParameters();
+        List<String> parameters = Arrays.stream(psiParameters)
+                .map(PsiParameter::getName)
+                .collect(Collectors.toList());
+        return String.join(", ", parameters);
     }
 
     private PsiJavaFile createEmptyBuilder(final PsiJavaFile sourceClass) {
