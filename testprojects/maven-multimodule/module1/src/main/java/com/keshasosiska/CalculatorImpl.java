@@ -2,10 +2,10 @@ package com.keshasosiska;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-public class Calculator {
+public class CalculatorImpl implements Calculator {
     public String name;
 
-    public Calculator(final String name) {
+    public CalculatorImpl(final String name) {
         this.name = name;
     }
 
