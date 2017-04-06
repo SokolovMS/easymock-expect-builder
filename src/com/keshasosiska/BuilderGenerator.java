@@ -102,8 +102,11 @@ public class BuilderGenerator {
 
     private VirtualFile getEmptyVirtualFile() throws IOException {
         // TODO: I guess test directory is not always "src/test/java"
-        VirtualFile virtualTestFile = project.getBaseDir()
-                .findOrCreateChildData(project, "src")
+        PsiDirectory currentDir = psiSrcFile.getContainingDirectory();
+        while (!Objects.equals("src", currentDir.getName())) {
+            currentDir = currentDir.getParent();
+        }
+        VirtualFile virtualTestFile = currentDir.getVirtualFile()
                 .findOrCreateChildData(project, "test")
                 .findOrCreateChildData(project, "java");
 

@@ -2,8 +2,6 @@ package com.keshasosiska;
 
 import org.easymock.EasyMock;
 
-import static org.easymock.EasyMock.replay;
-
 public class ExpectedCalculatorMockBuilder {
     private Calculator mock;
 
@@ -33,7 +31,7 @@ public class ExpectedCalculatorMockBuilder {
     }
 
     public Calculator buildAndReplay() {
-        replay(mock);
+        EasyMock.replay(mock);
         return mock;
     }
 }
