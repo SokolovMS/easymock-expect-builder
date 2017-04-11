@@ -123,14 +123,17 @@ public class BuilderGenerator {
         PsiClass testClass = psiTestFile.getClasses()[0];
 
         PsiElementFactory factory = PsiElementFactory.SERVICE.getInstance(project);
-        GlobalSearchScope scope = psiSrcFile.getResolveScope();
+        GlobalSearchScope srcScope = psiSrcFile.getResolveScope();
+        GlobalSearchScope testScope = psiTestFile.getResolveScope();
 
         // import
-        PsiClass importClass = JavaPsiFacade.getInstance(project).findClass("org.easymock.EasyMock", scope);
-        psiTestFile.getImportList().add(factory.createImportStatement(importClass));
+        PsiClass importClass = JavaPsiFacade.getInstance(project).findClass("org.easymock.EasyMock", testScope);
+        if (importClass != null) {
+            psiTestFile.getImportList().add(factory.createImportStatement(importClass));
+        }
 
         // field
-        PsiType srcClassType = PsiType.getTypeByName(srcClass.getName(), project, scope);
+        PsiType srcClassType = PsiType.getTypeByName(srcClass.getName(), project, srcScope);
         PsiElement field = factory.createField("mock", srcClassType);
         testClass.add(field);
 
