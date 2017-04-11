@@ -1,15 +1,17 @@
 <idea-plugin version="2">
     <id>com.keshasosiska.easymock-expect-builder</id>
     <name>Easymock expect builder</name>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <vendor email="keshasosiska@mail.ru">KeshaSosiska</vendor>
 
     <description><![CDATA[
         Plugin for intellij idea to create builder for tests from source class.<br>
+        For more info visit https://github.com/SokolovMS/easymock-expect-builder
     ]]></description>
 
     <change-notes><![CDATA[
-      Initial
+      1. Test imports are searched in test scope
+      2. Test builder methods throws the same as source methods
     ]]>
     </change-notes>
 
