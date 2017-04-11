@@ -1,7 +1,7 @@
 package com.keshasosiska;
 
 public interface Calculator {
-    int addInts(final int a, final int b);
+    int addInts(final int a, final int b) throws InterruptedException;
 
     String addStrings(final String a, final String b);
 
