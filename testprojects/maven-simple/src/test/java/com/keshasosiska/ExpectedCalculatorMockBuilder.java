@@ -9,7 +9,7 @@ public class ExpectedCalculatorMockBuilder {
         mock = EasyMock.mock(Calculator.class);
     }
 
-    public ExpectedCalculatorMockBuilder addInts(final int a, final int b, final int expected) {
+    public ExpectedCalculatorMockBuilder addInts(final int a, final int b, final int expected) throws InterruptedException {
         EasyMock.expect(mock.addInts(a, b)).andReturn(expected).once();
         return this;
     }

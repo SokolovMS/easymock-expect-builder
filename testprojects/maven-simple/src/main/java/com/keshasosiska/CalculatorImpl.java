@@ -9,7 +9,8 @@ public class CalculatorImpl implements Calculator {
         this.name = name;
     }
 
-    public int addInts(final int a, final int b) {
+    public int addInts(final int a, final int b) throws InterruptedException {
+        Thread.sleep(1);
         return a + b;
     }
 
