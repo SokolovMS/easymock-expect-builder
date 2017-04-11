@@ -11,5 +11,11 @@
 
     <artifactId>module1</artifactId>
 
-
+    <dependencies>
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymock</artifactId>
+            <version>3.4</version>
+        </dependency>
+    </dependencies>
 </project>
