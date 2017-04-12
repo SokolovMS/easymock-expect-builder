@@ -1,6 +1,8 @@
 # Easymock expect builder
 
-Plugin will help to create Builder which mocks each method of source class.
+Plugin will help to create Builder which mocks each method of source class.  
+
+See [plugin page](https://plugins.jetbrains.com/plugin/9586-easymock-expect-builder) in JetBrains repo.
 
 ## Generate expect builder
 1. **"Alt + insert"** inside of your source class
