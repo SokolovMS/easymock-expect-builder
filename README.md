@@ -22,13 +22,13 @@ new YourClassExpectBuilder()
 
 ## Examples
 ### 1
-Before
+Source method
 ```
 public int addInts(final int a, final int b) {
     return a + b;
 }
 ```
-After
+Expect builder method
 ```
 public ExpectedCalculatorMockBuilder addInts(final int a, final int b, final int expected) {
     EasyMock.expect(mock.addInts(a, b)).andReturn(expected).once();
@@ -36,13 +36,13 @@ public ExpectedCalculatorMockBuilder addInts(final int a, final int b, final int
 }
 ```
 ### 2
-Before
+Source method
 ```
 public void voidMethod(final double a, final PublicClass b) {
     throw new NotImplementedException();
 }
 ```
-After
+Expect builder method
 ```
 public ExpectedCalculatorMockBuilder voidMethod(final double a, final PublicClass b) {
     mock.voidMethod(a, b);
