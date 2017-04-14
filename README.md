@@ -1,6 +1,7 @@
 # Easymock expect builder
 
 Plugin will help to create Builder which mocks each method of source class.  
+All code regarding mocking of current class is placed under one testBuilderClass.
 
 See [plugin page](https://plugins.jetbrains.com/plugin/9586-easymock-expect-builder) in JetBrains repo.
 
@@ -109,6 +110,7 @@ public ExpectedCalculatorMockBuilder voidMethod(final double a, final PublicClas
 ```
 ## Known issues
 1. Most of checks (like null checks) are not done.
+1. After the second usage on the same class YourClassMockBuilder will be overwritten.
 ## Developer statements regarding plugin
 1. Plugin was done for personal purposes
 1. Plugin has a lot of things to improve
