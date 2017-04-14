@@ -20,7 +20,64 @@ new YourClassExpectBuilder()
     .buildAndReplay();
 ```
 
-## Examples
+## Example of usage
+### Before
+``` java
+// Used in one place
+private YourClass mockYourClassForTest1() {
+    YourClass mock = EasyMock.mock(YourClass.class);
+    EasyMock.expect(mock.method1(specificArg1)).andReturn(expected1).once();
+    EasyMock.expect(mock.method2(specificArg2)).andReturn(expected2).once();
+    EasyMock.replay(mock);
+    return mock;
+}
+
+// Used in one place
+private YourClass mockYourClassForTest2() {
+    YourClass mock = EasyMock.mock(YourClass.class);
+    EasyMock.expect(mock.method1(specificArg1)).andReturn(expected1).once();
+    EasyMock.expect(mock.method2(specificArg2)).andReturn(expected2).once();
+    EasyMock.expect(mock.method3(specificArg3)).andReturn(expected3).once();
+    EasyMock.replay(mock);
+    return mock;
+}
+
+// Or other combination of methods from YourClass.
+
+@Test
+public void test1() {
+    YourClass myClass = mockYourClassForTest1();
+    ...
+}
+
+@Test
+public void test2() {
+    YourClass myClass = mockYourClassForTest2();
+    ...
+}
+```
+### After
+``` java
+@Test
+public void test1() {
+    YourClass myClass = new YourClassMockBuilder()
+            .method1(specificArg1, expected1)
+            .method2(specificArg2, expected2)
+            .buildAndReplay();
+    ...
+}
+
+@Test
+public void test2() {
+    YourClass myClass = new YourClassMockBuilder()
+            .method1(specificArg1, expected1)
+            .method2(specificArg2, expected2)
+            .method3(specificArg3, expected3)
+            .buildAndReplay();
+    ...
+}
+```
+## Examples of translations
 ### 1
 Source method
 ```
