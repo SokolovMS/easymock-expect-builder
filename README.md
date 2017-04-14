@@ -12,7 +12,7 @@ See [plugin page](https://plugins.jetbrains.com/plugin/9586-easymock-expect-buil
 1. Check test directory for generated builder
 
 ## How to use expect builder
-```java
+``` java
 new YourClassExpectBuilder()
     .method1(arg11, ..., argK, expected1)
     ...
@@ -80,13 +80,13 @@ public void test2() {
 ## Examples of translations
 ### 1
 Source method
-```
+``` java
 public int addInts(final int a, final int b) {
     return a + b;
 }
 ```
 Expect builder method
-```
+``` java
 public ExpectedCalculatorMockBuilder addInts(final int a, final int b, final int expected) {
     EasyMock.expect(mock.addInts(a, b)).andReturn(expected).once();
     return this;
@@ -94,13 +94,13 @@ public ExpectedCalculatorMockBuilder addInts(final int a, final int b, final int
 ```
 ### 2
 Source method
-```
+``` java
 public void voidMethod(final double a, final PublicClass b) {
     throw new NotImplementedException();
 }
 ```
 Expect builder method
-```
+``` java
 public ExpectedCalculatorMockBuilder voidMethod(final double a, final PublicClass b) {
     mock.voidMethod(a, b);
     EasyMock.expectLastCall().once();
